@@ -1,0 +1,26 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Config (user-specific)
+.pii_checker_config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Snowflake Cortex Code internal
+.snowflake/

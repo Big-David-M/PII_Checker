@@ -1,0 +1,2 @@
+# PII Checker — no external dependencies required.
+# Uses only Python 3.8+ standard library (tkinter, re, json, subprocess).
