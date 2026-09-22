@@ -1,5 +1,5 @@
 """
-PII Checker — standalone desktop app.
+PII SCANNER v1.0 — UAC APPROVED
 Paste text, scan for PII/secrets locally, send clean text to CoCo.
 """
 
@@ -19,14 +19,33 @@ DEFAULT_CONFIG = {
     "coco_cli_path": "cortex",
     "min_confidence": "low",
     "disabled_patterns": [],
-    "window_width": 900,
-    "window_height": 750,
+    "window_width": 920,
+    "window_height": 780,
 }
 
+# DOOM palette
+METAL_DARK = "#1a1a1a"
+METAL_MID = "#2d2d2d"
+METAL_LIGHT = "#3a3a3a"
+METAL_BORDER = "#4a4a4a"
+RUST = "#8b4513"
+RUST_LIGHT = "#a0522d"
+RUST_DIM = "#5c3310"
+RIVET = "#555555"
+TEXT_GREEN = "#33ff33"
+TEXT_AMBER = "#ffaa00"
+TEXT_RED = "#ff3333"
+TEXT_DIM = "#777777"
+TEXT_BRIGHT = "#cccccc"
+HUD_BG = "#111111"
+BLOOD_RED = "#cc0000"
+DOOM_FONT = "Courier"
+DOOM_FONT_BOLD = (DOOM_FONT, 11, "bold")
+
 TAG_COLORS = {
-    "high": {"bg": "#FF6B6B", "fg": "#000000"},
-    "medium": {"bg": "#FFD93D", "fg": "#000000"},
-    "low": {"bg": "#6BCFFF", "fg": "#000000"},
+    "high": {"bg": "#cc0000", "fg": "#ffffff"},
+    "medium": {"bg": "#cc8800", "fg": "#000000"},
+    "low": {"bg": "#336699", "fg": "#ffffff"},
 }
 
 
@@ -58,47 +77,69 @@ class Config:
         self.data[key] = value
 
 
+def doom_button(parent, text, command, state="normal"):
+    btn = tk.Button(
+        parent, text=text.upper(), command=command, state=state,
+        font=(DOOM_FONT, 10, "bold"),
+        fg=TEXT_BRIGHT, bg=METAL_LIGHT, activebackground=RUST,
+        activeforeground="#ffffff", relief="raised", bd=2,
+        highlightbackground=METAL_BORDER, padx=10, pady=4,
+        cursor="hand2",
+    )
+    return btn
+
+
 class SettingsWindow(tk.Toplevel):
     def __init__(self, parent, config: Config, on_save):
         super().__init__(parent)
-        self.title("Settings")
+        self.title("// SETTINGS //")
         self.config = config
         self.on_save = on_save
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
+        self.configure(bg=METAL_DARK)
 
         self.pattern_vars = {}
         self._build_ui()
         self.geometry("+%d+%d" % (parent.winfo_x() + 50, parent.winfo_y() + 50))
 
     def _build_ui(self):
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill="both", expand=True, padx=10, pady=10)
+        # General settings
+        gen_frame = tk.LabelFrame(self, text=" GENERAL ", font=(DOOM_FONT, 10, "bold"),
+                                  fg=TEXT_AMBER, bg=METAL_DARK, bd=2, relief="ridge",
+                                  highlightbackground=RUST_DIM)
+        gen_frame.pack(fill="x", padx=10, pady=(10, 5))
 
-        general = ttk.Frame(notebook, padding=10)
-        notebook.add(general, text="General")
-
-        ttk.Label(general, text="CoCo CLI path:").grid(row=0, column=0, sticky="w", pady=5)
+        tk.Label(gen_frame, text="COCO CLI PATH:", font=(DOOM_FONT, 9),
+                 fg=TEXT_GREEN, bg=METAL_DARK).grid(row=0, column=0, sticky="w", pady=5, padx=5)
         self.cli_var = tk.StringVar(value=self.config["coco_cli_path"])
-        ttk.Entry(general, textvariable=self.cli_var, width=40).grid(row=0, column=1, sticky="w", pady=5, padx=5)
+        tk.Entry(gen_frame, textvariable=self.cli_var, width=35,
+                 font=(DOOM_FONT, 10), fg=TEXT_GREEN, bg=HUD_BG,
+                 insertbackground=TEXT_GREEN, relief="sunken", bd=2).grid(row=0, column=1, pady=5, padx=5)
 
-        ttk.Label(general, text="Minimum confidence:").grid(row=1, column=0, sticky="w", pady=5)
+        tk.Label(gen_frame, text="MIN CONFIDENCE:", font=(DOOM_FONT, 9),
+                 fg=TEXT_GREEN, bg=METAL_DARK).grid(row=1, column=0, sticky="w", pady=5, padx=5)
         self.conf_var = tk.StringVar(value=self.config["min_confidence"])
-        conf_combo = ttk.Combobox(general, textvariable=self.conf_var, values=["low", "medium", "high"], state="readonly", width=10)
-        conf_combo.grid(row=1, column=1, sticky="w", pady=5, padx=5)
+        conf_menu = tk.OptionMenu(gen_frame, self.conf_var, "low", "medium", "high")
+        conf_menu.configure(font=(DOOM_FONT, 9), fg=TEXT_GREEN, bg=METAL_LIGHT,
+                           activebackground=RUST, highlightbackground=METAL_BORDER)
+        conf_menu.grid(row=1, column=1, sticky="w", pady=5, padx=5)
 
-        patterns_frame = ttk.Frame(notebook, padding=10)
-        notebook.add(patterns_frame, text="Patterns")
+        # Pattern toggles
+        pat_frame = tk.LabelFrame(self, text=" DETECTION MODULES ", font=(DOOM_FONT, 10, "bold"),
+                                  fg=TEXT_AMBER, bg=METAL_DARK, bd=2, relief="ridge",
+                                  highlightbackground=RUST_DIM)
+        pat_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
-        canvas = tk.Canvas(patterns_frame, width=400, height=350)
-        scrollbar = ttk.Scrollbar(patterns_frame, orient="vertical", command=canvas.yview)
-        inner = ttk.Frame(canvas)
+        canvas = tk.Canvas(pat_frame, bg=METAL_DARK, highlightthickness=0, width=420, height=300)
+        scrollbar = tk.Scrollbar(pat_frame, orient="vertical", command=canvas.yview,
+                                 bg=METAL_MID, troughcolor=METAL_DARK)
+        inner = tk.Frame(canvas, bg=METAL_DARK)
 
         inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=inner, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
@@ -109,18 +150,22 @@ class SettingsWindow(tk.Toplevel):
         for name, category, confidence in all_patterns:
             if category != current_cat:
                 current_cat = category
-                lbl = ttk.Label(inner, text=f"-- {category.upper()} --", font=("TkDefaultFont", 10, "bold"))
-                lbl.pack(anchor="w", pady=(10, 2))
+                tk.Label(inner, text=f"=== {category.upper()} ===",
+                         font=(DOOM_FONT, 10, "bold"), fg=RUST_LIGHT,
+                         bg=METAL_DARK).pack(anchor="w", pady=(8, 2), padx=5)
 
             var = tk.BooleanVar(value=(name not in disabled))
             self.pattern_vars[name] = var
-            cb = ttk.Checkbutton(inner, text=f"{name}  ({confidence})", variable=var)
-            cb.pack(anchor="w", padx=15)
+            cb = tk.Checkbutton(inner, text=f"{name}  [{confidence}]", variable=var,
+                                font=(DOOM_FONT, 9), fg=TEXT_DIM, bg=METAL_DARK,
+                                selectcolor=METAL_MID, activebackground=METAL_DARK,
+                                activeforeground=TEXT_GREEN)
+            cb.pack(anchor="w", padx=20)
 
-        btn_frame = ttk.Frame(self)
+        btn_frame = tk.Frame(self, bg=METAL_DARK)
         btn_frame.pack(fill="x", padx=10, pady=10)
-        ttk.Button(btn_frame, text="Save", command=self._save).pack(side="right", padx=5)
-        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
+        doom_button(btn_frame, "SAVE", self._save).pack(side="right", padx=5)
+        doom_button(btn_frame, "CANCEL", self.destroy).pack(side="right")
 
     def _save(self):
         self.config["coco_cli_path"] = self.cli_var.get().strip() or "cortex"
@@ -133,10 +178,10 @@ class SettingsWindow(tk.Toplevel):
 
 
 class PiiCheckerApp:
-    DOT_GRAY = "#999999"
-    DOT_GREEN = "#22c55e"
-    DOT_RED = "#ef4444"
-    DOT_BLUE = "#3b82f6"
+    DOT_GRAY = TEXT_DIM
+    DOT_GREEN = TEXT_GREEN
+    DOT_RED = TEXT_RED
+    DOT_BLUE = TEXT_AMBER
 
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -144,92 +189,156 @@ class PiiCheckerApp:
         self.matches: list = []
         self._scan_after_id = None
 
-        self.root.title("PII Checker")
+        self.root.title("PII SCANNER // UAC TERMINAL v1.0")
         self.root.geometry(f"{self.config['window_width']}x{self.config['window_height']}")
-        self.root.minsize(600, 500)
+        self.root.minsize(700, 550)
+        self.root.configure(bg=METAL_DARK)
 
         self._build_ui()
         self._apply_tags()
 
+    def _draw_rivets(self, canvas, w, h):
+        rivet_size = 6
+        positions = [(6, 6), (w-8, 6), (6, h-8), (w-8, h-8)]
+        for x, y in positions:
+            canvas.create_oval(x, y, x+rivet_size, y+rivet_size,
+                             fill=RIVET, outline="#666666")
+            canvas.create_oval(x+1, y+1, x+rivet_size-1, y+rivet_size-1,
+                             fill="#444444", outline="")
+
     def _build_ui(self):
-        style = ttk.Style()
-        try:
-            style.theme_use("clam")
-        except tk.TclError:
-            pass
+        # -- Title plate (riveted metal) --
+        title_frame = tk.Frame(self.root, bg=METAL_DARK)
+        title_frame.pack(fill="x", padx=6, pady=(6, 3))
 
-        # -- Top bar with status dot --
-        top = tk.Frame(self.root)
-        top.pack(fill="x", padx=10, pady=(10, 5))
+        title_plate = tk.Canvas(title_frame, height=44, bg=METAL_MID,
+                                highlightthickness=1, highlightbackground=RUST_DIM,
+                                relief="raised", bd=2)
+        title_plate.pack(fill="x")
 
-        self.dot_canvas = tk.Canvas(top, width=20, height=20, highlightthickness=0)
-        self.dot_canvas.pack(side="left", padx=(0, 6))
-        self.dot_id = self.dot_canvas.create_oval(2, 2, 18, 18, fill=self.DOT_GRAY, outline="")
+        title_plate.bind("<Configure>", lambda e: self._on_title_resize(e, title_plate))
 
-        self.title_label = tk.Label(top, text="PII Checker", font=("TkDefaultFont", 16, "bold"))
-        self.title_label.pack(side="left")
+        self.dot_id = title_plate.create_oval(14, 12, 32, 30,
+                                               fill=self.DOT_GRAY, outline="#222222", width=2)
+        title_plate.create_text(42, 22, text="PII SCANNER",
+                               font=(DOOM_FONT, 16, "bold"), fill=TEXT_AMBER, anchor="w")
 
-        self.dot_text = tk.Label(top, text="Waiting for input", font=("TkDefaultFont", 10), fg="#666666")
-        self.dot_text.pack(side="left", padx=(10, 0))
+        self.dot_text_id = title_plate.create_text(220, 22, text="[ AWAITING INPUT ]",
+                                                    font=(DOOM_FONT, 10), fill=TEXT_DIM, anchor="w")
+        self.title_plate = title_plate
 
-        ttk.Button(top, text="Settings", command=self._open_settings, width=8).pack(side="right")
+        settings_btn = doom_button(title_frame, "CONFIG", self._open_settings)
+        settings_btn.place(relx=1.0, rely=0.5, anchor="e", x=-12)
 
-        # -- Input area --
-        input_frame = ttk.LabelFrame(self.root, text="Paste text here", padding=5)
-        input_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        # -- Input panel --
+        input_outer = tk.Frame(self.root, bg=RUST_DIM, bd=2, relief="ridge")
+        input_outer.pack(fill="both", expand=True, padx=6, pady=3)
 
-        self.text_area = scrolledtext.ScrolledText(input_frame, wrap="word", font=("Consolas", 11), undo=True)
-        self.text_area.pack(fill="both", expand=True)
+        input_header = tk.Frame(input_outer, bg=METAL_MID, height=24)
+        input_header.pack(fill="x")
+        input_header.pack_propagate(False)
+        tk.Label(input_header, text=" >> PASTE INPUT BUFFER",
+                 font=(DOOM_FONT, 9, "bold"), fg=RUST_LIGHT, bg=METAL_MID,
+                 anchor="w").pack(fill="x", padx=4)
+
+        self.text_area = scrolledtext.ScrolledText(
+            input_outer, wrap="word",
+            font=(DOOM_FONT, 11), undo=True,
+            bg=HUD_BG, fg=TEXT_GREEN,
+            insertbackground=TEXT_GREEN,
+            selectbackground=RUST, selectforeground="#ffffff",
+            relief="sunken", bd=2,
+            highlightbackground=METAL_BORDER, highlightcolor=RUST,
+        )
+        self.text_area.pack(fill="both", expand=True, padx=2, pady=(0, 2))
         self.text_area.bind("<<Modified>>", self._on_text_changed)
         self.text_area.bind("<Control-v>", self._on_paste)
 
-        # -- Button bar --
-        btn_bar = ttk.Frame(self.root)
-        btn_bar.pack(fill="x", padx=10, pady=5)
+        # -- Button bar (metal strip) --
+        btn_strip = tk.Frame(self.root, bg=METAL_MID, bd=1, relief="raised")
+        btn_strip.pack(fill="x", padx=6, pady=2)
 
-        self.scan_btn = ttk.Button(btn_bar, text="Scan for PII", command=self._scan)
-        self.scan_btn.pack(side="left", padx=(0, 5))
+        self.scan_btn = doom_button(btn_strip, ">> SCAN", self._scan)
+        self.scan_btn.pack(side="left", padx=4, pady=3)
 
-        self.clear_btn = ttk.Button(btn_bar, text="Clear", command=self._clear)
-        self.clear_btn.pack(side="left")
+        self.clear_btn = doom_button(btn_strip, "CLEAR", self._clear)
+        self.clear_btn.pack(side="left", padx=2, pady=3)
 
-        self.copy_btn = ttk.Button(btn_bar, text="Copy to Clipboard", command=self._copy_to_clipboard, state="disabled")
-        self.copy_btn.pack(side="right", padx=(5, 0))
+        self.copy_btn = doom_button(btn_strip, "COPY TO CLIPBOARD", self._copy_to_clipboard, state="disabled")
+        self.copy_btn.pack(side="right", padx=4, pady=3)
 
-        self.send_btn = ttk.Button(btn_bar, text="Send to CoCo", command=self._send_to_coco, state="disabled")
-        self.send_btn.pack(side="right")
+        self.send_btn = doom_button(btn_strip, "SEND TO COCO", self._send_to_coco, state="disabled")
+        self.send_btn.pack(side="right", padx=2, pady=3)
 
-        # -- Results area --
-        results_frame = ttk.LabelFrame(self.root, text="Results", padding=5)
-        results_frame.pack(fill="both", padx=10, pady=(5, 5), expand=False)
-        results_frame.configure(height=180)
+        # -- Results panel --
+        results_outer = tk.Frame(self.root, bg=RUST_DIM, bd=2, relief="ridge")
+        results_outer.pack(fill="both", padx=6, pady=3, expand=False)
 
-        self.results_tree = ttk.Treeview(results_frame, columns=("type", "confidence", "category", "text"), show="headings", height=6)
-        self.results_tree.heading("type", text="Type")
-        self.results_tree.heading("confidence", text="Confidence")
-        self.results_tree.heading("category", text="Category")
-        self.results_tree.heading("text", text="Matched Text")
-        self.results_tree.column("type", width=150)
+        results_header = tk.Frame(results_outer, bg=METAL_MID, height=24)
+        results_header.pack(fill="x")
+        results_header.pack_propagate(False)
+        tk.Label(results_header, text=" >> THREAT ANALYSIS",
+                 font=(DOOM_FONT, 9, "bold"), fg=RUST_LIGHT, bg=METAL_MID,
+                 anchor="w").pack(fill="x", padx=4)
+
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Doom.Treeview",
+                        background=HUD_BG, foreground=TEXT_GREEN,
+                        fieldbackground=HUD_BG, font=(DOOM_FONT, 10),
+                        rowheight=22)
+        style.configure("Doom.Treeview.Heading",
+                        background=METAL_LIGHT, foreground=TEXT_AMBER,
+                        font=(DOOM_FONT, 9, "bold"), relief="raised")
+        style.map("Doom.Treeview",
+                  background=[("selected", RUST)],
+                  foreground=[("selected", "#ffffff")])
+
+        self.results_tree = ttk.Treeview(results_outer, style="Doom.Treeview",
+                                         columns=("type", "confidence", "category", "text"),
+                                         show="headings", height=6)
+        self.results_tree.heading("type", text="TYPE")
+        self.results_tree.heading("confidence", text="LEVEL")
+        self.results_tree.heading("category", text="CLASS")
+        self.results_tree.heading("text", text="INTERCEPTED DATA")
+        self.results_tree.column("type", width=160)
         self.results_tree.column("confidence", width=80)
         self.results_tree.column("category", width=80)
         self.results_tree.column("text", width=400)
 
-        tree_scroll = ttk.Scrollbar(results_frame, orient="vertical", command=self.results_tree.yview)
+        tree_scroll = tk.Scrollbar(results_outer, orient="vertical",
+                                   command=self.results_tree.yview,
+                                   bg=METAL_MID, troughcolor=HUD_BG)
         self.results_tree.configure(yscrollcommand=tree_scroll.set)
-        self.results_tree.pack(side="left", fill="both", expand=True)
-        tree_scroll.pack(side="right", fill="y")
+        self.results_tree.pack(side="left", fill="both", expand=True, padx=2, pady=(0, 2))
+        tree_scroll.pack(side="right", fill="y", pady=(0, 2))
 
         self.results_tree.bind("<<TreeviewSelect>>", self._on_result_click)
 
-        # -- Status bar --
-        self.status_var = tk.StringVar(value="Paste text and press Scan, or just start typing.")
-        self.status_bar = ttk.Label(self.root, textvariable=self.status_var, relief="sunken", anchor="w", padding=5)
-        self.status_bar.pack(fill="x", padx=10, pady=(0, 10))
+        # -- HUD status bar --
+        hud_frame = tk.Frame(self.root, bg=METAL_MID, bd=2, relief="ridge")
+        hud_frame.pack(fill="x", padx=6, pady=(2, 6))
+
+        self.status_var = tk.StringVar(value="[ SYSTEM READY ] Paste data into input buffer...")
+        self.status_bar = tk.Label(hud_frame, textvariable=self.status_var,
+                                   font=(DOOM_FONT, 10, "bold"),
+                                   fg=TEXT_GREEN, bg=HUD_BG,
+                                   anchor="w", padx=8, pady=4)
+        self.status_bar.pack(fill="x")
+
+    def _on_title_resize(self, event, canvas):
+        w = event.width
+        h = event.height
+        canvas.delete("rivet")
+        rivet_size = 6
+        for x, y in [(6, 6), (w-12, 6), (6, h-12), (w-12, h-12)]:
+            canvas.create_oval(x, y, x+rivet_size, y+rivet_size,
+                             fill=RIVET, outline="#666666", tags="rivet")
 
     def _apply_tags(self):
         for level, colors in TAG_COLORS.items():
             self.text_area.tag_configure(f"pii_{level}", background=colors["bg"], foreground=colors["fg"])
-        self.text_area.tag_configure("selected_pii", background="#B833FF", foreground="#FFFFFF")
+        self.text_area.tag_configure("selected_pii", background="#ff00ff", foreground="#ffffff")
 
     def _get_enabled_patterns(self):
         all_names = {name for name, _, _ in get_all_pattern_names()}
@@ -237,8 +346,8 @@ class PiiCheckerApp:
         return all_names - disabled
 
     def _set_dot(self, color, text):
-        self.dot_canvas.itemconfig(self.dot_id, fill=color)
-        self.dot_text.configure(text=text, fg=color if color != self.DOT_GRAY else "#666666")
+        self.title_plate.itemconfig(self.dot_id, fill=color)
+        self.title_plate.itemconfig(self.dot_text_id, text=text, fill=color)
 
     def _on_text_changed(self, event=None):
         self.text_area.edit_modified(False)
@@ -255,11 +364,14 @@ class PiiCheckerApp:
     def _scan(self):
         text = self.text_area.get("1.0", "end-1c")
         if not text.strip():
-            self.status_var.set("Nothing to scan.")
-            self._set_dot(self.DOT_GRAY, "Waiting for input")
+            self.status_var.set("[ SYSTEM READY ] Paste data into input buffer...")
+            self.status_bar.configure(fg=TEXT_GREEN)
+            self._set_dot(self.DOT_GRAY, "[ AWAITING INPUT ]")
             return
 
-        self._set_dot(self.DOT_BLUE, "Scanning...")
+        self._set_dot(self.DOT_BLUE, "[ SCANNING... ]")
+        self.status_var.set("[ SCANNING ] Analyzing input buffer...")
+        self.status_bar.configure(fg=TEXT_AMBER)
         self.root.update_idletasks()
 
         for level in TAG_COLORS:
@@ -280,14 +392,15 @@ class PiiCheckerApp:
             self.results_tree.insert("", "end", values=(
                 match.pattern_name,
                 match.confidence.upper(),
-                match.category,
+                match.category.upper(),
                 display_text,
             ))
 
         count = len(self.matches)
         if count == 0:
-            self._set_dot(self.DOT_GREEN, "CLEAR — No PII detected")
-            self.status_var.set("No PII detected. Safe to send.")
+            self._set_dot(self.DOT_GREEN, "[ ALL CLEAR ]")
+            self.status_var.set("[ SECURE ] No PII detected. Buffer is clean. Ready to transmit.")
+            self.status_bar.configure(fg=TEXT_GREEN)
             self.copy_btn.configure(state="normal")
             self.send_btn.configure(state="normal")
         else:
@@ -296,13 +409,15 @@ class PiiCheckerApp:
             low = sum(1 for m in self.matches if m.confidence == "low")
             parts = []
             if high:
-                parts.append(f"{high} high")
+                parts.append(f"{high} CRIT")
             if med:
-                parts.append(f"{med} medium")
+                parts.append(f"{med} WARN")
             if low:
-                parts.append(f"{low} low")
-            self._set_dot(self.DOT_RED, f"BLOCKED — {count} PII item(s) found")
-            self.status_var.set(f"WARNING: {count} PII item(s) detected ({', '.join(parts)})")
+                parts.append(f"{low} LOW")
+            threat_str = " / ".join(parts)
+            self._set_dot(self.DOT_RED, f"[ {count} THREAT(S) DETECTED ]")
+            self.status_var.set(f"[ BLOCKED ] {count} PII target(s) found: {threat_str} -- TRANSMISSION DENIED")
+            self.status_bar.configure(fg=TEXT_RED)
             self.copy_btn.configure(state="disabled")
             self.send_btn.configure(state="disabled")
 
@@ -327,8 +442,9 @@ class PiiCheckerApp:
         self.text_area.tag_remove("selected_pii", "1.0", "end")
         self.results_tree.delete(*self.results_tree.get_children())
         self.matches = []
-        self._set_dot(self.DOT_GRAY, "Waiting for input")
-        self.status_var.set("Paste text and press Scan, or just start typing.")
+        self._set_dot(self.DOT_GRAY, "[ AWAITING INPUT ]")
+        self.status_var.set("[ SYSTEM READY ] Input buffer cleared.")
+        self.status_bar.configure(fg=TEXT_GREEN)
         self.copy_btn.configure(state="disabled")
         self.send_btn.configure(state="disabled")
 
@@ -336,7 +452,7 @@ class PiiCheckerApp:
         text = self.text_area.get("1.0", "end-1c")
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
-        self.status_var.set("Copied to clipboard.")
+        self.status_var.set("[ COPIED ] Buffer contents loaded to clipboard.")
 
     def _send_to_coco(self):
         text = self.text_area.get("1.0", "end-1c")
@@ -347,29 +463,32 @@ class PiiCheckerApp:
                 capture_output=True, text=True, timeout=30,
             )
             if result.returncode == 0:
-                self.status_var.set("Sent to CoCo successfully.")
+                self.status_var.set("[ TRANSMITTED ] Data sent to CoCo successfully.")
             else:
                 self.root.clipboard_clear()
                 self.root.clipboard_append(text)
-                self.status_var.set(f"CoCo CLI failed (copied to clipboard instead). Error: {result.stderr.strip()[:100]}")
+                self.status_var.set(f"[ FALLBACK ] CoCo link failed. Copied to clipboard. ERR: {result.stderr.strip()[:80]}")
         except FileNotFoundError:
             self.root.clipboard_clear()
             self.root.clipboard_append(text)
-            self.status_var.set(f"CoCo CLI not found at '{cli}'. Text copied to clipboard instead. Configure path in Settings.")
+            self.status_var.set(f"[ FALLBACK ] CoCo not found at '{cli}'. Copied to clipboard. Set path in CONFIG.")
         except subprocess.TimeoutExpired:
-            self.status_var.set("CoCo CLI timed out.")
+            self.status_var.set("[ TIMEOUT ] CoCo link timed out.")
         except Exception as e:
-            self.status_var.set(f"Error: {str(e)[:100]}")
+            self.status_var.set(f"[ ERROR ] {str(e)[:100]}")
 
     def _open_settings(self):
         SettingsWindow(self.root, self.config, on_save=self._on_settings_saved)
 
     def _on_settings_saved(self):
-        self.status_var.set("Settings saved. Re-scan to apply changes.")
+        self.status_var.set("[ CONFIG SAVED ] Detection modules updated. Re-scanning...")
+        self.status_bar.configure(fg=TEXT_AMBER)
+        self.root.after(300, self._scan)
 
 
 def main():
     root = tk.Tk()
+    root.configure(bg=METAL_DARK)
     app = PiiCheckerApp(root)
     root.mainloop()
 
